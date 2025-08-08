@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-romantic bg-gradient-to-br from-rose-50 to-pink-100 min-h-screen;
+  }
+}
+
+@layer components {
+  .romantic-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-rose-200 p-6;
+  }
+  
+  .romantic-button {
+    @apply bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg;
+  }
+  
+  .romantic-input {
+    @apply w-full p-4 border-2 border-rose-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all duration-300 bg-white/50;
+  }
+  
+  .heart-beat {
+    animation: heartbeat 2s ease-in-out infinite;
+  }
+}
+
+@keyframes heartbeat {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.8s ease-out;
+}
