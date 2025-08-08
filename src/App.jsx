@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthPage from "./components/AuthPage";
 import RiddlePage from "./components/RiddlePage";
@@ -6,14 +6,17 @@ import MapGuide from "./components/MapGuide";
 
 /**
  * DevNavigation:
- * - aparece em localhost (import.meta.env.DEV)
- * - ou quando url tem ?dev=1
- * - ou quando url tem ?devToken=TOKEN e TOKEN bate com VITE_DEV_TOKEN (variável de ambiente)
+ * - mostra quando estiver em import.meta.env.DEV
+ * - ou quando ?dev=1
+ * - ou quando ?devToken=<token> e token bate com VITE_DEV_TOKEN
+ *
+ * Exibe aviso se a VITE_DEV_TOKEN não estiver presente no bundle (útil para debug pós-deploy).
  */
 function DevNavigation() {
   const isDev = import.meta.env.DEV;
   const envToken = import.meta.env.VITE_DEV_TOKEN || null;
 
+  // client-side only checks
   const search =
     typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
   const devParam = search?.get("dev") === "1";
@@ -21,9 +24,10 @@ function DevNavigation() {
 
   const show = isDev || devParam || (devTokenParam && envToken && devTokenParam === envToken);
 
-  // útil para debug — remove depois que funcionar
   useEffect(() => {
-    console.log("DevNavigation: isDev", isDev, "envToken:", envToken, "devParam:", devParam, "devTokenParam:", devTokenParam);
+    // útil para ver no console se o token compilado está presente
+    console.log("DevNavigation - import.meta.env:", import.meta.env);
+    console.log("DevNavigation - isDev:", isDev, "envToken:", envToken, "devParam:", devParam, "devTokenParam:", devTokenParam);
   }, [isDev, envToken, devParam, devTokenParam]);
 
   if (!show) return null;
@@ -34,7 +38,7 @@ function DevNavigation() {
 
       { !envToken && (
         <div className="mb-2 text-yellow-300 text-xs">
-          ⚠️ VITE_DEV_TOKEN não encontrado no bundle. Certifique-se de adicioná-lo e redeploy.
+          ⚠️ VITE_DEV_TOKEN não encontrado no bundle. Adicione VITE_DEV_TOKEN na Vercel e redeploy.
         </div>
       )}
 
@@ -53,7 +57,6 @@ function App() {
   return (
     <Router>
       <div className="App">
-        {/* Menu de navegação para desenvolvimento (visível conforme regras acima) */}
         <DevNavigation />
 
         <Routes>

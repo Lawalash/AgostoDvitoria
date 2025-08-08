@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/riddle/:path*", "destination": "/" },
+    { "source": "/final", "destination": "/" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
