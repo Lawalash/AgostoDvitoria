@@ -345,9 +345,6 @@ export default function Countdown({ targetDate, onComplete }) {
                 >
                   Aguarde até que chegue a zero...
                 </motion.p>
-                <motion.div animate={{ scale: [1, 1.03, 1] }} transition={{ duration: 2, repeat: Infinity }} className="text-rose-400 text-xs tracking-wide">
-                  💝 Uma surpresa especial te espera
-                </motion.div>
               </div>
             </div>
           </div>
