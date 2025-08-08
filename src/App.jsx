@@ -12,24 +12,38 @@ import MapGuide from "./components/MapGuide";
  */
 function DevNavigation() {
   const isDev = import.meta.env.DEV;
+  const envToken = import.meta.env.VITE_DEV_TOKEN || null;
+
   const search =
     typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
   const devParam = search?.get("dev") === "1";
   const devTokenParam = search?.get("devToken") || null;
-  const envToken = import.meta.env.VITE_DEV_TOKEN || null;
 
   const show = isDev || devParam || (devTokenParam && envToken && devTokenParam === envToken);
+
+  // útil para debug — remove depois que funcionar
+  useEffect(() => {
+    console.log("DevNavigation: isDev", isDev, "envToken:", envToken, "devParam:", devParam, "devTokenParam:", devTokenParam);
+  }, [isDev, envToken, devParam, devTokenParam]);
+
   if (!show) return null;
 
   return (
     <div className="fixed top-4 right-4 z-50 bg-black/80 backdrop-blur-md rounded-2xl p-4 text-white text-sm">
       <div className="text-xs mb-2 opacity-75">🚧 Dev Navigation</div>
+
+      { !envToken && (
+        <div className="mb-2 text-yellow-300 text-xs">
+          ⚠️ VITE_DEV_TOKEN não encontrado no bundle. Certifique-se de adicioná-lo e redeploy.
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
-        <Link to="/riddle/1" className="hover:text-rose-400 transition-colors">🎯 Charada 1</Link>
-        <Link to="/riddle/2" className="hover:text-rose-400 transition-colors">🎯 Charada 2</Link>
-        <Link to="/riddle/3" className="hover:text-rose-400 transition-colors">🎯 Charada 3</Link>
-        <Link to="/riddle/4" className="hover:text-rose-400 transition-colors">🎯 Charada 4</Link>
-        <Link to="/final" className="hover:text-rose-400 transition-colors">🗺️ Mapa Final</Link>
+        <a href="/riddle/1" className="hover:text-rose-400 transition-colors">🎯 Charada 1</a>
+        <a href="/riddle/2" className="hover:text-rose-400 transition-colors">🎯 Charada 2</a>
+        <a href="/riddle/3" className="hover:text-rose-400 transition-colors">🎯 Charada 3</a>
+        <a href="/riddle/4" className="hover:text-rose-400 transition-colors">🎯 Charada 4</a>
+        <a href="/final" className="hover:text-rose-400 transition-colors">🗺️ Mapa Final</a>
       </div>
     </div>
   );
