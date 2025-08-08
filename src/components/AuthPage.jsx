@@ -7,36 +7,53 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Parâmetros da URL
-  const searchParams = new URLSearchParams(location.search);
-  const devMode = searchParams.get("dev") === "1";
-  const isDev = import.meta.env.DEV;
-
   const TARGET = "2025-08-12T00:00:00";
 
   useEffect(() => {
-    // Se estiver em modo dev E com parâmetro dev=1, vai direto para riddle/1
-    if (isDev && devMode) {
-      console.log("🚧 Modo desenvolvedor ativado - indo para riddle/1");
+    const search = new URLSearchParams(location.search);
+    const devParam = search.get("dev") === "1";
+    const devTokenParam = search.get("devToken") || null;
+    const envToken = import.meta.env.VITE_DEV_TOKEN || null;
+
+    // permitir debug se:
+    // - modo dev local (Vite)
+    // - ?dev=1
+    // - ?devToken=<token> e token bate com VITE_DEV_TOKEN
+    const isAllowedDev =
+      import.meta.env.DEV ||
+      devParam ||
+      (devTokenParam && envToken && devTokenParam === envToken);
+
+    if (isAllowedDev) {
+      // redireciona direto para a primeira charada
       navigate("/riddle/1");
       return;
     }
 
-    // Verificar se já passou da data alvo
+    // Se já passou da data alvo, libera também
     const now = new Date();
     const targetDate = new Date(TARGET);
     if (now >= targetDate) {
       navigate("/riddle/1");
     }
-  }, [devMode, isDev, navigate]);
+  }, [location.search, navigate]);
 
   const handleCountdownComplete = () => {
-    // Quando o contador chegar a 0, vai para riddle/1
     navigate("/riddle/1");
   };
 
-  // Só mostra o countdown se ainda não chegou na data alvo e não está em dev mode
-  if (showCountdown && !devMode) {
+  // Só mostra o countdown se ainda não chegou na data alvo e não está em dev mode/token
+  // (showCountdown está mantido para compatibilidade caso queira controlar via estado)
+  const search = new URLSearchParams(location.search);
+  const devParam = search.get("dev") === "1";
+  const devTokenParam = search.get("devToken") || null;
+  const envToken = import.meta.env.VITE_DEV_TOKEN || null;
+  const isAllowedDev =
+    import.meta.env.DEV ||
+    devParam ||
+    (devTokenParam && envToken && devTokenParam === envToken);
+
+  if (showCountdown && !isAllowedDev) {
     return <Countdown targetDate={TARGET} onComplete={handleCountdownComplete} />;
   }
 
