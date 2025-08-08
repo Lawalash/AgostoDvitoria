@@ -343,7 +343,7 @@ export default function Countdown({ targetDate, onComplete }) {
                   transition={{ duration: 4, repeat: Infinity }}
                   className="text-slate-400 text-sm"
                 >
-                  Aguarde até que chegue a zero...
+                  Aguarde até que chegue a zero, madame...
                 </motion.p>
               </div>
             </div>
