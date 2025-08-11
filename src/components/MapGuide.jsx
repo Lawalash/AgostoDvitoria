@@ -1,12 +1,14 @@
+// src/components/MapGuide.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
 /**
  * MapGuide - mostra um mapa estilizado em SVG, traça uma rota
- * do usuário até o destino final (coordenadas definidas abaixo)
- * e exibe distância / tempo estimado / status de chegada.
+ * do usuário até o destino final e exibe distância / tempo estimado / status de chegada.
  *
- * Destino fixo: -7.257106781268056, -35.944510491423486
+ * Melhorias:
+ * 1) quando a distância < threshold (120 m), os pontos "se encontram" visualmente;
+ * 2) ao ficar dentro do threshold, exibe modal de chegada (acessível) orientando a ler o QR no portão.
  */
 
 export default function MapGuide() {
@@ -18,6 +20,9 @@ export default function MapGuide() {
   const [estimatedTime, setEstimatedTime] = useState(0); // minutes
   const [isNearDestination, setIsNearDestination] = useState(false);
 
+  // modal de chegada
+  const [showArrivalModal, setShowArrivalModal] = useState(false);
+
   const watchIdRef = useRef(null);
   const animRef = useRef(null);
   const animTRef = useRef(0);
@@ -28,6 +33,9 @@ export default function MapGuide() {
     lat: -7.257106781268056,
     lng: -35.944510491423486,
   };
+
+  // threshold (metros) para "chegou"
+  const arriveThresholdMeters = 120;
 
   // Haversine — retorna distância em km
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -64,7 +72,7 @@ export default function MapGuide() {
       maximumAge: 5000,
     };
 
-    // primeira posição (um "snapshot")
+    // primeira posição (snapshot) + watch contínuo
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = {
@@ -92,7 +100,6 @@ export default function MapGuide() {
           },
           (err) => {
             console.error("watchPosition error:", err);
-            // não sobrescrever mensagem de permissão já mostrada
           },
           options
         );
@@ -118,7 +125,13 @@ export default function MapGuide() {
     const d = calculateDistance(loc.lat, loc.lng, destination.lat, destination.lng);
     setDistance(d);
     setEstimatedTime(calcEstimatedTimeMin(d));
-    setIsNearDestination(d < 0.1); // menos de 100 metros
+    const meters = d * 1000;
+    const near = meters <= arriveThresholdMeters;
+    setIsNearDestination(near);
+    // abrir modal quando entrar no raio (se ainda não estiver aberto)
+    if (near) {
+      setShowArrivalModal(true);
+    }
   };
 
   useEffect(() => {
@@ -139,21 +152,16 @@ export default function MapGuide() {
   }, []);
 
   // --- PROJEÇÃO SIMPLES: lat/lon -> x,y no SVG ---
-  // utiliza uma projeção equiretangular ajustada por cos(lat) (suficiente para curto alcance)
   const projectLatLngToXY = (lat, lng, mapWidth = 600, mapHeight = 400, padding = 60) => {
-    // center entre destino e user (se user não existir, center = destination)
     const centerLat = userLocation ? (userLocation.lat + destination.lat) / 2 : destination.lat;
     const centerLng = userLocation ? (userLocation.lng + destination.lng) / 2 : destination.lng;
 
-    // metros por grau
     const metersPerDegLat = 111320;
     const metersPerDegLng = 111320 * Math.cos((centerLat * Math.PI) / 180);
 
-    // delta em metros do ponto até o centro
     const dxMeters = (lng - centerLng) * metersPerDegLng;
     const dyMeters = (lat - centerLat) * metersPerDegLat;
 
-    // determinar escala: quantos pixels por metro
     const latSpanMeters = Math.abs((destination.lat - (userLocation ? userLocation.lat : destination.lat)) * metersPerDegLat) || 1;
     const lngSpanMeters = Math.abs((destination.lng - (userLocation ? userLocation.lng : destination.lng)) * metersPerDegLng) || 1;
     const usableW = mapWidth - padding * 2;
@@ -165,12 +173,11 @@ export default function MapGuide() {
     const cy = mapHeight / 2;
 
     const x = cx + dxMeters * scale;
-    const y = cy - dyMeters * scale; // lat crescente => y decrescente na tela
+    const y = cy - dyMeters * scale;
 
     return { x, y };
   };
 
-  // calcula os pontos da curva (P0 user, P1 ctrl1, P2 ctrl2, P3 dest)
   const getRoutePathPoints = () => {
     if (!userLocation) return null;
 
@@ -179,13 +186,11 @@ export default function MapGuide() {
     const pUser = projectLatLngToXY(userLocation.lat, userLocation.lng, mapW, mapH);
     const pDest = projectLatLngToXY(destination.lat, destination.lng, mapW, mapH);
 
-    // curva suave: control points baseados na direção entre pontos
     const dx = pDest.x - pUser.x;
     const dy = pDest.y - pUser.y;
     const distPx = Math.hypot(dx, dy);
     const offset = Math.min(120, distPx * 0.35);
 
-    // control points deslocados orthogonal para criar curva elegante
     const angle = Math.atan2(dy, dx);
     const orthX = -Math.sin(angle);
     const orthY = Math.cos(angle);
@@ -207,7 +212,6 @@ export default function MapGuide() {
     };
   };
 
-  // cálculo ponto de Bézier cúbica para t em [0,1]
   const cubicBezierPoint = (t, P0, P1, P2, P3) => {
     const u = 1 - t;
     const tt = t * t;
@@ -234,12 +238,11 @@ export default function MapGuide() {
   useEffect(() => {
     const points = getRoutePathPoints();
     if (!points) {
-      // sem usuário ainda
       return;
     }
 
     let start = null;
-    const duration = Math.max(2000, Math.min(6000, Math.ceil((distance || 0.1) * 1000))); // ms - ajusta conforme distância (heurística)
+    const duration = Math.max(2000, Math.min(6000, Math.ceil((distance || 0.1) * 1000))); // ms
 
     const step = (timestamp) => {
       if (!start) start = timestamp;
@@ -259,9 +262,8 @@ export default function MapGuide() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation, distance]); // reinicia quando user muda
+  }, [userLocation, distance]);
 
-  // RENDER: estados iniciais
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -293,8 +295,45 @@ export default function MapGuide() {
 
   // layout principal
   const points = getRoutePathPoints();
-  const pathD = points ? `M ${points.p0.x} ${points.p0.y} C ${points.p1.x} ${points.p1.y}, ${points.p2.x} ${points.p2.y}, ${points.p3.x} ${points.p3.y}` : "";
-  const movingPoint = points ? cubicBezierPoint(animT, points.p0, points.p1, points.p2, points.p3) : null;
+  let renderPoints = points;
+  if (points && userLocation) {
+    const meters = distance * 1000;
+    const proximityFactor = Math.max(0, Math.min(1, 1 - meters / arriveThresholdMeters));
+    const mid = { x: (points.p0.x + points.p3.x) / 2, y: (points.p0.y + points.p3.y) / 2 };
+    const p0 = {
+      x: points.p0.x + (mid.x - points.p0.x) * proximityFactor,
+      y: points.p0.y + (mid.y - points.p0.y) * proximityFactor,
+    };
+    const p3 = {
+      x: points.p3.x + (mid.x - points.p3.x) * proximityFactor,
+      y: points.p3.y + (mid.y - points.p3.y) * proximityFactor,
+    };
+
+    const dx = p3.x - p0.x;
+    const dy = p3.y - p0.y;
+    const distPx = Math.hypot(dx, dy);
+    const offset = Math.min(120, distPx * 0.35);
+    const angle = Math.atan2(dy, dx);
+    const orthX = -Math.sin(angle);
+    const orthY = Math.cos(angle);
+
+    const control1 = {
+      x: p0.x + dx * 0.3 + orthX * offset * 0.6,
+      y: p0.y + dy * 0.3 + orthY * offset * 0.6,
+    };
+    const control2 = {
+      x: p0.x + dx * 0.7 + orthX * offset * -0.6,
+      y: p0.y + dy * 0.7 + orthY * offset * -0.6,
+    };
+
+    renderPoints = { p0, p1: control1, p2: control2, p3 };
+  }
+
+  const pathD = renderPoints ? `M ${renderPoints.p0.x} ${renderPoints.p0.y} C ${renderPoints.p1.x} ${renderPoints.p1.y}, ${renderPoints.p2.x} ${renderPoints.p2.y}, ${renderPoints.p3.x} ${renderPoints.p3.y}` : "";
+  const movingPoint = renderPoints ? cubicBezierPoint(animT, renderPoints.p0, renderPoints.p1, renderPoints.p2, renderPoints.p3) : null;
+
+  const distanceText = distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`;
+  const estimatedText = estimatedTime < 60 ? `${estimatedTime} min` : `${Math.floor(estimatedTime / 60)} h ${estimatedTime % 60} min`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
@@ -312,7 +351,6 @@ export default function MapGuide() {
           )}
         </motion.div>
 
-        {/* status de rastreamento (simples) */}
         {isTracking && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-green-500/20 backdrop-blur-md border border-green-500/30 rounded-2xl p-4 text-center">
             <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className="text-green-400 text-sm flex items-center justify-center gap-2">
@@ -321,7 +359,6 @@ export default function MapGuide() {
           </motion.div>
         )}
 
-        {/* Mapa (SVG) */}
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 overflow-hidden">
           <div className="relative">
             <svg viewBox="0 0 600 400" className="w-full h-auto bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-white/10" style={{ maxHeight: 400 }}>
@@ -355,7 +392,6 @@ export default function MapGuide() {
 
               <rect width="600" height="400" fill="url(#grid)" />
 
-              {/* Decorações */}
               <rect x="80" y="280" width="25" height="40" fill="rgba(148,163,184,0.18)" rx="2"/>
               <rect x="180" y="220" width="30" height="60" fill="rgba(148,163,184,0.18)" rx="2"/>
               <rect x="320" y="300" width="20" height="30" fill="rgba(148,163,184,0.18)" rx="2"/>
@@ -365,8 +401,7 @@ export default function MapGuide() {
               <circle cx="400" cy="180" r="10" fill="rgba(34,197,94,0.24)"/>
               <circle cx="280" cy="360" r="15" fill="rgba(34,197,94,0.24)"/>
 
-              {/* Rota (curva) */}
-              {points && (
+              {renderPoints && (
                 <motion.path
                   d={pathD}
                   stroke="url(#routeGradient)"
@@ -381,39 +416,36 @@ export default function MapGuide() {
                 />
               )}
 
-              {/* usuário (marcador) */}
-              {points && (
+              {renderPoints && (
                 <g>
                   <motion.circle
-                    cx={points.p0.x}
-                    cy={points.p0.y}
-                    r={20}
+                    cx={renderPoints.p0.x}
+                    cy={renderPoints.p0.y}
+                    r={ isNearDestination ? 24 : 20 }
                     fill="rgba(14,165,233,0.08)"
-                    animate={{ scale: [1, 1.08, 1] }}
+                    animate={{ scale: isNearDestination ? [1, 1.06, 1] : [1, 1.08, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
-                  <circle cx={points.p0.x} cy={points.p0.y} r={8} fill="#0ea5e9" filter="url(#pulse)" />
-                  <text x={points.p0.x} y={points.p0.y + 26} textAnchor="middle" fill="white" fontSize="11" fontWeight="600">📍 Você</text>
+                  <circle cx={renderPoints.p0.x} cy={renderPoints.p0.y} r={ isNearDestination ? 10 : 8 } fill="#0ea5e9" filter="url(#pulse)" />
+                  <text x={renderPoints.p0.x} y={renderPoints.p0.y + 32} textAnchor="middle" fill="white" fontSize="11" fontWeight="600">📍 Você</text>
                 </g>
               )}
 
-              {/* destino */}
-              {points && (
+              {renderPoints && (
                 <g>
                   <motion.circle
-                    cx={points.p3.x}
-                    cy={points.p3.y}
-                    r={28}
+                    cx={renderPoints.p3.x}
+                    cy={renderPoints.p3.y}
+                    r={ isNearDestination ? 32 : 28 }
                     fill={isNearDestination ? "rgba(34,197,94,0.22)" : "rgba(239,68,68,0.18)"}
-                    animate={{ scale: [1, 1.08, 1] }}
+                    animate={{ scale: isNearDestination ? [1, 1.08, 1] : [1, 1.08, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
-                  <circle cx={points.p3.x} cy={points.p3.y} r={14} fill={isNearDestination ? "#10b981" : "#ef4444"} />
-                  <text x={points.p3.x} y={points.p3.y - 34} textAnchor="middle" fill="white" fontSize="12" fontWeight="700">🎁 Destino</text>
+                  <circle cx={renderPoints.p3.x} cy={renderPoints.p3.y} r={ isNearDestination ? 16 : 14 } fill={isNearDestination ? "#10b981" : "#ef4444"} />
+                  <text x={renderPoints.p3.x} y={renderPoints.p3.y - 36} textAnchor="middle" fill="white" fontSize="12" fontWeight="700">🎁 Destino</text>
                 </g>
               )}
 
-              {/* indicador móvel ao longo da curva */}
               {movingPoint && (
                 <g>
                   <circle cx={movingPoint.x} cy={movingPoint.y} r={6} fill="#fbbf24" />
@@ -423,12 +455,11 @@ export default function MapGuide() {
           </div>
         </motion.div>
 
-        {/* Informações / cards: agora apenas Distância e Tempo */}
         <div className="grid md:grid-cols-2 gap-4">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5">
             <h3 className="text-lg font-bold text-rose-400 mb-3 flex items-center gap-2">📏 Distância</h3>
             <div className="text-center text-slate-300">
-              <div className="text-2xl font-bold text-rose-400 mb-1">{distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(2)} km`}</div>
+              <div className="text-2xl font-bold text-rose-400 mb-1">{distanceText}</div>
               <div className="text-sm opacity-75">até o destino</div>
               {userLocation && <div className="text-xs mt-2 text-green-400">Precisão: ±{Math.round(userLocation.accuracy)} m</div>}
             </div>
@@ -437,13 +468,12 @@ export default function MapGuide() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5">
             <h3 className="text-lg font-bold text-purple-400 mb-3 flex items-center gap-2">⏱️ Tempo</h3>
             <div className="text-center text-slate-300">
-              <div className="text-2xl font-bold text-purple-400 mb-1">{estimatedTime < 60 ? `${estimatedTime} min` : `${Math.floor(estimatedTime / 60)} h ${estimatedTime % 60} min`}</div>
+              <div className="text-2xl font-bold text-purple-400 mb-1">{estimatedText}</div>
               <div className="text-sm opacity-75">estimado</div>
             </div>
           </motion.div>
         </div>
 
-        {/* Mensagem final adaptada */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }} className={`${isNearDestination ? "bg-gradient-to-r from-green-500/20 to-emerald-600/20 border-green-500/30" : "bg-gradient-to-r from-rose-500/20 to-purple-600/20 border-white/20"} backdrop-blur-md border rounded-3xl p-6 text-center transition-all duration-700`}>
           <motion.div animate={{ scale: [1, 1.08, 1], rotate: [0, 6, -6, 0] }} transition={{ duration: 3, repeat: Infinity }} className="text-4xl mb-2">
             💝
@@ -458,6 +488,32 @@ export default function MapGuide() {
           )}
         </motion.div>
       </div>
+
+      {/* Modal de chegada (acessível) com instrução para ler QR no portão */}
+      {showArrivalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="arrival-title">
+          <div className="w-full max-w-md bg-white/6 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center shadow-xl">
+            <h2 id="arrival-title" className="text-2xl font-bold text-white mb-2">🎉 Parabéns — Você chegou!</h2>
+            <p className="text-slate-300 mb-4">
+              Chegou ao destino! Procure o <strong>QR code no portão</strong> e escaneie para acessar a próxima pista.
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setShowArrivalModal(false)}
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-400"
+              >
+                Entendi
+              </button>
+              <button
+                onClick={() => setShowArrivalModal(false)}
+                className="px-4 py-2 bg-white/6 border border-white/10 text-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-400"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

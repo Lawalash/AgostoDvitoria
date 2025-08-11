@@ -49,13 +49,17 @@ const RiddlePage = () => {
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && currentRiddle) {
+    // o comportamento de popup/redirect de 15s foi definido para a etapa 3 (isLastStep),
+    // aqui mantemos a checagem externa e passamos o step para o componente.
+    const last = String(step) === "3";
     return (
       <VideoAndClue
         videoSrc={currentRiddle.videoSrc}
         message={currentRiddle.message}
         clue={currentRiddle.clue}
-        isLastStep={false}
+        isLastStep={last}
+        step={String(step)}
       />
     );
   }
@@ -63,7 +67,6 @@ const RiddlePage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Header - sem ícone */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-10">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-rose-400 to-purple-400 bg-clip-text text-transparent mb-2">Etapa {step}</h1>
           <p className="text-slate-300">Digite a senha para desbloquear</p>
