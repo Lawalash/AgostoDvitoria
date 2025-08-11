@@ -1,3 +1,4 @@
+// src/components/RiddlePage.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,16 +38,11 @@ const RiddlePage = () => {
     }
   };
 
-  // NOTA: não existe navegação para a próxima etapa pela UI.
-  // A transição para a próxima etapa deve ocorrer via QR code (externo).
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-6xl mb-4">
-            💝
-          </motion.div>
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="text-6xl mb-4">💝</motion.div>
           <p className="text-slate-300">Carregando aventura...</p>
         </motion.div>
       </div>
@@ -54,13 +50,12 @@ const RiddlePage = () => {
   }
 
   if (isAuthenticated) {
-    // Ao autenticar, mostra o vídeo + mensagem + pista (sem botão de avançar)
     return (
       <VideoAndClue
         videoSrc={currentRiddle.videoSrc}
         message={currentRiddle.message}
         clue={currentRiddle.clue}
-        isLastStep={false} // não utilizado para navegação aqui
+        isLastStep={false}
       />
     );
   }
@@ -68,65 +63,40 @@ const RiddlePage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-center mb-12">
-          <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="text-7xl mb-6">
-            🗝️
-          </motion.div>
-
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-rose-400 to-purple-400 bg-clip-text text-transparent mb-3">
-            Etapa {step}
-          </h1>
-
-          <p className="text-slate-300 text-lg">Digite a senha para desbloquear</p>
+        {/* Header - sem ícone */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-10">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-rose-400 to-purple-400 bg-clip-text text-transparent mb-2">Etapa {step}</h1>
+          <p className="text-slate-300">Digite a senha para desbloquear</p>
         </motion.div>
 
-        {/* Form */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
-            <div>
-              <label className="block text-rose-400 font-semibold mb-4 text-lg">Palavra-chave:</label>
-              <input
-                type="text"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError("");
-                }}
-                className="w-full px-6 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder-slate-400 text-lg focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 transition-all duration-300"
-                placeholder="Digite aqui..."
-                autoFocus
-                autoComplete="off"
-              />
-            </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/6 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-lg">
+          <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
+            <label className="block text-left text-sm font-semibold text-rose-300">Palavra-chave</label>
+            <input
+              type="text"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              className="w-full px-5 py-3 bg-transparent border border-white/10 rounded-xl text-white placeholder-slate-400 text-lg focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+              placeholder="Digite aqui..."
+              autoFocus
+              autoComplete="off"
+            />
 
             <AnimatePresence>
               {error && (
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-xl py-3 px-4">
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="text-red-400 text-center bg-red-500/8 border border-red-500/20 rounded-lg py-2">
                   {error}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <motion.button
-              type="submit"
-              disabled={!password.trim()}
-              className="w-full py-4 px-6 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-2xl text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:from-rose-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-rose-400/30 shadow-xl transform active:scale-95"
-              whileHover={{ scale: password.trim() ? 1.02 : 1 }}
-              whileTap={{ scale: password.trim() ? 0.98 : 1 }}
-            >
-              Desbloquear
-            </motion.button>
+            <div className="flex gap-3">
+              <button type="submit" disabled={!password.trim()} className="flex-1 py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-xl disabled:opacity-50">Desbloquear</button>
+            </div>
+
+            <p className="text-slate-400 text-sm text-center mt-2">Procure pela pista no local indicado na etapa anterior</p>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-slate-400 text-sm">
-              Procure pela pista no local indicado na etapa anterior
-            </p>
-          </div>
         </motion.div>
-
-        {/* removido: botão de voltar / navegação para próxima etapa */}
       </div>
     </div>
   );

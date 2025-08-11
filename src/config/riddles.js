@@ -1,8 +1,11 @@
+// src/config/riddles.js
+import video1 from "../assets/videos/video-teste-riddle-01.mp4";
+
 export const riddles = [
   {
     path: "1",
-    password: "rosa2025",
-    videoSrc: "/videos/riddle1.mp4",
+    password: "12/08/2025",
+    videoSrc: video1,
     clue: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
     message: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod."
   },
@@ -29,22 +32,14 @@ export const riddles = [
   }
 ];
 
-// Função para buscar charada pelo path
-export const getRiddleByPath = (path) => {
-  return riddles.find((riddle) => riddle.path === path);
-};
+export const getRiddleByPath = (path) => riddles.find((r) => r.path === String(path));
 
-// Função para obter próxima charada
 export const getNextRiddle = (currentPath) => {
-  const currentIndex = riddles.findIndex((riddle) => riddle.path === currentPath);
-  if (currentIndex !== -1 && currentIndex < riddles.length - 1) {
-    return riddles[currentIndex + 1];
-  }
-  return null; // Não há próxima charada
+  const idx = riddles.findIndex((r) => r.path === String(currentPath));
+  return idx !== -1 && idx < riddles.length - 1 ? riddles[idx + 1] : null;
 };
 
-// Função para verificar se é a última etapa
 export const isLastRiddle = (currentPath) => {
-  const currentIndex = riddles.findIndex((riddle) => riddle.path === currentPath);
-  return currentIndex === riddles.length - 1;
+  const idx = riddles.findIndex((r) => r.path === String(currentPath));
+  return idx === riddles.length - 1;
 };
