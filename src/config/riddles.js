@@ -1,5 +1,5 @@
 // src/config/riddles.js
-import video1 from "../assets/videos/video-teste-riddle-01.mp4";
+import video1 from "../assets/videos/";
 // TODOS os riddles usam o mesmo arquivo de vídeo local (video-teste-riddle-01.mp4).
 // Certifique-se de que o arquivo existe em src/assets/videos/.
 
