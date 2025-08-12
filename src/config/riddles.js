@@ -13,14 +13,14 @@ export const riddles = [
   },
   {
     path: "2",
-    password: "Familia2025",
+    password: "16/10/1978",
     videoSrc: video1,
     message: "Sua família — seu bem mais precioso, sempre ao seu lado.",
     clue: "Se encontre com quem te deu a luz, quem te apoia e te guarda em orações."
   },
   {
     path: "3",
-    password: "171020",
+    password: "Familia2025",
     videoSrc: video1,
     message: "Aquele que nasceu e te trouxe alegria — um recomeço que iluminou nossas vidas.",
     clue: "Vá até o lugar onde seu sonho se iniciou... onde Deus te concedeu espaço e tranquilidade."
